@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Set & Rep - Home</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="main-container">
+        <h1>Welcome to Set & Rep</h1>
+        <p>Your modern workout logging app.</p>
+        <div id="main-actions">
+            <button onclick="window.location='login.html'">Login</button>
+            <button onclick="window.location='register.html'">Register</button>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+    // Redirect to dashboard if already logged in
+    if (localStorage.getItem('access')) {
+        window.location = 'dashboard.html';
+    }
+    </script>
+</body>
+</html> 

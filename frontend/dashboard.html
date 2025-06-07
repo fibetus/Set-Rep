@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Set & Rep - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <button id="logout-btn">Logout</button>
+    </nav>
+    <div class="main-container">
+        <h1>Welcome to Set & Rep</h1>
+        <div>
+            <button onclick="window.location='workout.html'">Start New Workout</button>
+            <button onclick="window.location='plan.html'">Training Plans</button>
+        </div>
+        <h2>Your Workout History</h2>
+        <div id="history"></div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        let resp = await apiRequest('/sessions/');
+        if (resp.ok) {
+            let data = await resp.json();
+            let html = '<ul>';
+            for (let session of data) {
+                html += `<li>
+                    <a href="workout.html?id=${session.id}">Session #${session.id} (${session.start_time})</a>
+                </li>`;
+            }
+            html += '</ul>';
+            document.getElementById('history').innerHTML = html;
+        } else {
+            document.getElementById('history').innerText = 'Failed to load history.';
+        }
+    });
+    </script>
+    <script src="js/auth.js"></script>
+</body>
+</html> 
