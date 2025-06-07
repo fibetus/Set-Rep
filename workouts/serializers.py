@@ -2,7 +2,9 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Exercise, WorkoutSession, LoggedExercise,
-    Set, TrainingPlan, TrainingPlanExercise
+    Set, TrainingPlan, TrainingPlanExercise,
+    MuscleGroup, WorkoutTemplate, TemplateExercise,
+    Workout, WorkoutExercise
 )
 
 class UserSerializer(serializers.ModelSerializer):
@@ -11,11 +13,17 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'email')
         read_only_fields = ('id',)
 
+class MuscleGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MuscleGroup
+        fields = ['id', 'name', 'description']
+
 class ExerciseSerializer(serializers.ModelSerializer):
+    muscle_groups = MuscleGroupSerializer(many=True, read_only=True)
+
     class Meta:
         model = Exercise
-        fields = ('id', 'name', 'muscle_group')
-        read_only_fields = ('id',)
+        fields = ['id', 'name', 'description', 'muscle_groups', 'instructions', 'equipment_needed']
 
 class SetSerializer(serializers.ModelSerializer):
     class Meta:
@@ -106,4 +114,37 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
                     order=order
                 )
 
-        return instance 
+        return instance
+
+class TemplateExerciseSerializer(serializers.ModelSerializer):
+    exercise = ExerciseSerializer(read_only=True)
+    exercise_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = TemplateExercise
+        fields = ['id', 'exercise', 'exercise_id', 'sets', 'reps', 'rest_time', 'order']
+
+class WorkoutTemplateSerializer(serializers.ModelSerializer):
+    exercises = TemplateExerciseSerializer(source='templateexercise_set', many=True, read_only=True)
+
+    class Meta:
+        model = WorkoutTemplate
+        fields = ['id', 'name', 'description', 'exercises', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+class WorkoutExerciseSerializer(serializers.ModelSerializer):
+    exercise = ExerciseSerializer(read_only=True)
+    exercise_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = WorkoutExercise
+        fields = ['id', 'exercise', 'exercise_id', 'sets', 'reps', 'weight', 'rest_time', 'order', 'notes']
+
+class WorkoutSerializer(serializers.ModelSerializer):
+    exercises = WorkoutExerciseSerializer(source='workoutexercise_set', many=True, read_only=True)
+    template = WorkoutTemplateSerializer(read_only=True)
+
+    class Meta:
+        model = Workout
+        fields = ['id', 'user', 'template', 'date', 'notes', 'exercises']
+        read_only_fields = ['user', 'date'] 

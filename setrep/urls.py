@@ -38,4 +38,6 @@ if settings.DEBUG:
         re_path(r'^register\.html$', TemplateView.as_view(template_name='register.html')),
         re_path(r'^$', TemplateView.as_view(template_name='index.html'), name='home'),
         re_path(r'^index\.html$', TemplateView.as_view(template_name='index.html')),
+        re_path(r'^workout\.html$', TemplateView.as_view(template_name='workout.html')),
+        re_path(r'^plan\.html$', TemplateView.as_view(template_name='plan.html')),
     ] 

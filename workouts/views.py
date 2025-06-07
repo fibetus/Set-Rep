@@ -4,14 +4,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 from .models import (
     Exercise, WorkoutSession, LoggedExercise,
-    Set, TrainingPlan, TrainingPlanExercise
+    Set, TrainingPlan, TrainingPlanExercise,
+    MuscleGroup, WorkoutTemplate, TemplateExercise,
+    Workout, WorkoutExercise
 )
 from .serializers import (
     ExerciseSerializer, WorkoutSessionSerializer,
     LoggedExerciseSerializer, SetSerializer,
-    TrainingPlanSerializer
+    TrainingPlanSerializer, MuscleGroupSerializer,
+    WorkoutTemplateSerializer, WorkoutSerializer
 )
 
 class RegisterView(APIView):
@@ -44,11 +48,22 @@ class RegisterView(APIView):
             status=status.HTTP_201_CREATED
         )
 
+class MuscleGroupViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = MuscleGroup.objects.all()
+    serializer_class = MuscleGroupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
 class ExerciseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['muscle_group']
+
+    def get_queryset(self):
+        queryset = Exercise.objects.all()
+        muscle_group = self.request.query_params.get('muscle_group')
+        if muscle_group:
+            queryset = queryset.filter(muscle_groups__id=muscle_group)
+        return queryset
 
 class WorkoutSessionViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutSessionSerializer
@@ -150,4 +165,70 @@ class TrainingPlanViewSet(viewsets.ModelViewSet):
         return Response(
             self.get_serializer(plan).data,
             status=status.HTTP_201_CREATED
-        ) 
+        )
+
+class WorkoutTemplateViewSet(viewsets.ModelViewSet):
+    serializer_class = WorkoutTemplateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return WorkoutTemplate.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        template = serializer.save(user=self.request.user)
+        
+        # Create template exercises
+        exercises_data = self.request.data.get('exercises', [])
+        for i, exercise_data in enumerate(exercises_data):
+            TemplateExercise.objects.create(
+                template=template,
+                exercise_id=exercise_data['exercise_id'],
+                sets=exercise_data.get('sets', 3),
+                reps=exercise_data.get('reps', 10),
+                order=i
+            )
+
+class WorkoutViewSet(viewsets.ModelViewSet):
+    serializer_class = WorkoutSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Workout.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        workout = serializer.save(user=self.request.user)
+        
+        # Create workout exercises
+        exercises_data = self.request.data.get('exercises', [])
+        for i, exercise_data in enumerate(exercises_data):
+            WorkoutExercise.objects.create(
+                workout=workout,
+                exercise_id=exercise_data['exercise_id'],
+                sets=exercise_data.get('sets', 3),
+                reps=exercise_data.get('reps', 10),
+                weight=exercise_data.get('weight'),
+                order=i
+            )
+
+    @action(detail=False, methods=['post'])
+    def from_template(self, request):
+        template_id = request.data.get('template_id')
+        template = get_object_or_404(WorkoutTemplate, id=template_id, user=request.user)
+        
+        workout = Workout.objects.create(
+            user=request.user,
+            template=template
+        )
+        
+        # Copy exercises from template
+        for template_exercise in template.templateexercise_set.all():
+            WorkoutExercise.objects.create(
+                workout=workout,
+                exercise=template_exercise.exercise,
+                sets=template_exercise.sets,
+                reps=template_exercise.reps,
+                order=template_exercise.order
+            )
+        
+        serializer = self.get_serializer(workout)
+        return Response(serializer.data, status=status.HTTP_201_CREATED) 

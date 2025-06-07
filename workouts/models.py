@@ -2,24 +2,79 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 
-class MuscleGroup(models.TextChoices):
-    BACK = 'Back', 'Back'
-    CHEST = 'Chest', 'Chest'
-    TRICEPS = 'Triceps', 'Triceps'
-    BICEPS = 'Biceps', 'Biceps'
-    LEGS = 'Legs', 'Legs'
-    SHOULDERS = 'Shoulders', 'Shoulders'
-    ABS = 'Abs', 'Abs'
-
-class Exercise(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    muscle_group = models.CharField(
-        max_length=20,
-        choices=MuscleGroup.choices,
-    )
+class MuscleGroup(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.name} ({self.muscle_group})"
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+class Exercise(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    muscle_groups = models.ManyToManyField(MuscleGroup)
+    instructions = models.TextField(blank=True)
+    equipment_needed = models.CharField(max_length=200, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+class WorkoutTemplate(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    exercises = models.ManyToManyField(Exercise, through='TemplateExercise')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['-created_at']
+
+class TemplateExercise(models.Model):
+    template = models.ForeignKey(WorkoutTemplate, on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    sets = models.IntegerField(default=3)
+    reps = models.IntegerField(default=10)
+    rest_time = models.IntegerField(default=60)  # in seconds
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+class Workout(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    template = models.ForeignKey(WorkoutTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+    exercises = models.ManyToManyField(Exercise, through='WorkoutExercise')
+
+    def __str__(self):
+        return f"{self.user.username}'s workout on {self.date.strftime('%Y-%m-%d')}"
+
+    class Meta:
+        ordering = ['-date']
+
+class WorkoutExercise(models.Model):
+    workout = models.ForeignKey(Workout, on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    sets = models.IntegerField(default=3)
+    reps = models.IntegerField(default=10)
+    weight = models.FloatField(null=True, blank=True)  # in kg
+    rest_time = models.IntegerField(default=60)  # in seconds
+    order = models.IntegerField(default=0)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['order']
 
 class WorkoutSession(models.Model):
     client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='workout_sessions')
