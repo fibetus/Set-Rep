@@ -73,16 +73,16 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'client')
 
     def create(self, validated_data):
-        exercises_data = self.context.get('exercises', [])
+        exercises = validated_data.pop('exercises', None)
+        if exercises is None:
+            exercises = self.context.get('exercises', [])
         plan = TrainingPlan.objects.create(**validated_data)
-        
-        for order, exercise_id in enumerate(exercises_data, start=1):
+        for order, exercise_id in enumerate(exercises, start=1):
             TrainingPlanExercise.objects.create(
                 plan=plan,
                 exercise_id=exercise_id,
                 order=order
             )
-        
         return plan
 
     def update(self, instance, validated_data):

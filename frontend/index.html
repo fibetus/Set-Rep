@@ -3,23 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <title>Set & Rep - Home</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
 </head>
 <body>
     <div class="main-container">
         <h1>Welcome to Set & Rep</h1>
         <p>Your modern workout logging app.</p>
-        <div id="main-actions">
-            <button onclick="window.location='login.html'">Login</button>
-            <button onclick="window.location='register.html'">Register</button>
+        
+        <!-- Guest view -->
+        <div id="guest-view">
+            <div id="main-actions">
+                <button onclick="navigateTo('login.html')">Login</button>
+                <button onclick="navigateTo('register.html')">Register</button>
+            </div>
+        </div>
+
+        <!-- Logged in view -->
+        <div id="logged-in-view" style="display: none;">
+            <div class="user-actions">
+                <button onclick="navigateTo('workout.html')">New Workout</button>
+                <button onclick="navigateTo('plan.html')">Training Plan</button>
+                <button id="logout-btn">Logout</button>
+            </div>
+            <div id="workouts-container" class="workouts-grid">
+                <!-- Workouts will be loaded here -->
+            </div>
         </div>
     </div>
-    <script src="js/api.js"></script>
-    <script>
-    // Redirect to dashboard if already logged in
-    if (localStorage.getItem('access')) {
-        window.location = 'dashboard.html';
+    <script type="text/javascript" src="/static/js/api.js"></script>
+    <script type="text/javascript" src="/static/js/auth.js"></script>
+    <script type="text/javascript">
+    function navigateTo(url) {
+        window.location.href = url;
     }
+
+    // Show appropriate view based on authentication status
+    document.addEventListener('DOMContentLoaded', () => {
+        const guestView = document.getElementById('guest-view');
+        const loggedInView = document.getElementById('logged-in-view');
+        
+        if (getToken()) {
+            guestView.style.display = 'none';
+            loggedInView.style.display = 'block';
+        } else {
+            guestView.style.display = 'block';
+            loggedInView.style.display = 'none';
+        }
+    });
     </script>
 </body>
 </html> 

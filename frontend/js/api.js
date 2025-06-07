@@ -14,29 +14,90 @@ function clearToken() {
     localStorage.removeItem('refresh');
 }
 
-async function apiRequest(url, method='GET', data=null, auth=true) {
-    let headers = { 'Content-Type': 'application/json' };
-    if (auth && getToken()) headers['Authorization'] = 'Bearer ' + getToken();
-    let opts = { method, headers };
-    if (data) opts.body = JSON.stringify(data);
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
 
-    let resp = await fetch(API_BASE + url, opts);
-    if (resp.status === 401 && auth && localStorage.getItem('refresh')) {
-        // Try refresh
-        let refreshResp = await fetch(API_BASE + '/auth/token/refresh/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh: localStorage.getItem('refresh') })
-        });
-        if (refreshResp.ok) {
-            let tokens = await refreshResp.json();
-            setToken(tokens.access, localStorage.getItem('refresh'));
-            return apiRequest(url, method, data, auth); // retry
-        } else {
-            clearToken();
-            window.location = 'login.html';
-            return;
-        }
+    // Add authorization header if token exists
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
     }
-    return resp;
+
+    const config = {
+        method,
+        headers,
+    };
+
+    if (data) {
+        config.body = JSON.stringify(data);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/${endpoint}`, config);
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            // Handle token expiration
+            if (response.status === 401) {
+                localStorage.removeItem('access_token');
+                window.location.href = 'login.html';
+                throw new Error('Session expired. Please login again.');
+            }
+            throw new Error(responseData.detail || 'An error occurred');
+        }
+
+        return responseData;
+    } catch (error) {
+        console.error('API request error:', error);
+        throw error;
+    }
+}
+
+// User related API calls
+async function registerUser(userData) {
+    return apiRequest('users/', 'POST', userData);
+}
+
+async function loginUser(credentials) {
+    return apiRequest('auth/token/', 'POST', credentials);
+}
+
+async function getUserProfile() {
+    return apiRequest('users/me/');
+}
+
+// Workout related API calls
+async function getWorkouts() {
+    return apiRequest('workouts/');
+}
+
+async function createWorkout(workoutData) {
+    return apiRequest('workouts/', 'POST', workoutData);
+}
+
+async function updateWorkout(workoutId, workoutData) {
+    return apiRequest(`workouts/${workoutId}/`, 'PUT', workoutData);
+}
+
+async function deleteWorkout(workoutId) {
+    return apiRequest(`workouts/${workoutId}/`, 'DELETE');
+}
+
+// Training plan related API calls
+async function getTrainingPlans() {
+    return apiRequest('training-plans/');
+}
+
+async function createTrainingPlan(planData) {
+    return apiRequest('training-plans/', 'POST', planData);
+}
+
+async function updateTrainingPlan(planId, planData) {
+    return apiRequest(`training-plans/${planId}/`, 'PUT', planData);
+}
+
+async function deleteTrainingPlan(planId) {
+    return apiRequest(`training-plans/${planId}/`, 'DELETE');
 } 
