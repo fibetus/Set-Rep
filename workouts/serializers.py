@@ -25,6 +25,11 @@ class ExerciseSerializer(serializers.ModelSerializer):
         model = Exercise
         fields = ['id', 'name', 'description', 'muscle_groups', 'instructions', 'equipment_needed']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['muscle_groups'] = MuscleGroupSerializer(instance.muscle_groups.all(), many=True).data
+        return representation
+
 class SetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Set

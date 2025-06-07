@@ -142,20 +142,46 @@
         let selectedExercises = new Map();
         let currentMuscleGroup = null;
 
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
         // Load muscle groups and exercises
         async function loadMuscleGroups() {
+            if (!checkAuth()) return;
+
             try {
-                const response = await fetch('/api/v1/muscle-groups/');
-                const muscleGroups = await response.json();
-                
-                const container = document.getElementById('muscle-groups');
-                muscleGroups.forEach(group => {
-                    const button = document.createElement('button');
-                    button.className = 'muscle-group-btn';
-                    button.textContent = group.name;
-                    button.onclick = () => filterExercises(group.id);
-                    container.appendChild(button);
+                const response = await fetch('/api/v1/muscle-groups/', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const container = document.getElementById('muscle-groups');
+                container.innerHTML = '';
+                
+                if (Array.isArray(data)) {
+                    data.forEach(group => {
+                        const button = document.createElement('button');
+                        button.className = 'muscle-group-btn';
+                        button.textContent = group.name;
+                        button.onclick = () => filterExercises(group.id);
+                        container.appendChild(button);
+                    });
+                } else {
+                    console.error('Expected array of muscle groups, got:', data);
+                }
             } catch (error) {
                 console.error('Error loading muscle groups:', error);
             }
@@ -163,23 +189,47 @@
 
         // Load exercises
         async function loadExercises(muscleGroupId = null) {
+            if (!checkAuth()) return;
+
             try {
                 const url = muscleGroupId 
                     ? `/api/v1/exercises/?muscle_group=${muscleGroupId}`
                     : '/api/v1/exercises/';
-                const response = await fetch(url);
-                const exercises = await response.json();
                 
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
                 const container = document.getElementById('exercises-grid');
                 container.innerHTML = '';
                 
-                exercises.forEach(exercise => {
-                    const card = createExerciseCard(exercise);
-                    container.appendChild(card);
-                });
+                if (Array.isArray(data)) {
+                    data.forEach(exercise => {
+                        const card = createExerciseCard(exercise);
+                        container.appendChild(card);
+                    });
+                } else {
+                    console.error('Expected array of exercises, got:', data);
+                }
             } catch (error) {
                 console.error('Error loading exercises:', error);
             }
+        }
+
+        // Filter exercises by muscle group
+        function filterExercises(muscleGroupId) {
+            const buttons = document.querySelectorAll('.muscle-group-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            currentMuscleGroup = muscleGroupId;
+            loadExercises(muscleGroupId);
         }
 
         // Create exercise card
@@ -326,8 +376,10 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            loadMuscleGroups();
-            loadExercises();
+            if (checkAuth()) {
+                loadMuscleGroups();
+                loadExercises();
+            }
         });
     </script>
 </body>

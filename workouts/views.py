@@ -53,6 +53,11 @@ class MuscleGroupViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MuscleGroupSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 class ExerciseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
@@ -64,6 +69,11 @@ class ExerciseViewSet(viewsets.ReadOnlyModelViewSet):
         if muscle_group:
             queryset = queryset.filter(muscle_groups__id=muscle_group)
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class WorkoutSessionViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutSessionSerializer
