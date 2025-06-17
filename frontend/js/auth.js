@@ -1,15 +1,4 @@
 // Authentication functions
-function getToken() {
-    return localStorage.getItem('access_token');
-}
-
-function setToken(token) {
-    localStorage.setItem('access_token', token);
-}
-
-function removeToken() {
-    localStorage.removeItem('access_token');
-}
 
 // Login form handling
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    setToken(data.access);
+                    setToken(data.access, data.refresh);
                     window.location.href = 'index.html';
                 } else {
                     const errorMessage = document.getElementById('error-message');
@@ -101,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
-            removeToken();
+            clearToken();
             window.location.href = 'index.html';
         });
     }
@@ -160,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Edit workout from home page
     window.editWorkoutFromHome = function(workoutId) {
-        window.location.href = `/static/edit-workout.html?id=${workoutId}`;
+        window.location.href = `edit-workout.html?id=${workoutId}`;
     };
 
     window.acceptWorkoutChanges = function() {

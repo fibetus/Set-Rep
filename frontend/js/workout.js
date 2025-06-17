@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             config.body = JSON.stringify(body);
         }
 
-        const response = await fetch(`/api/v1${endpoint}`, config);
+        const response = await fetch(`/api/v1/${endpoint}`, config);
         if (response.status === 401) {
             window.location.href = 'login.html';
         }
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const loadMuscleGroups = async () => {
-        const response = await apiRequest('/muscle-groups/');
+        const response = await apiRequest('muscle-groups/');
         if (response.ok) {
             const muscleGroups = await response.json();
             muscleGroupsContainer.innerHTML = muscleGroups.map(mg => 
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     window.loadExercises = async (muscleGroupId = null) => {
-        let endpoint = '/exercises/';
+        let endpoint = 'exercises/';
         if (muscleGroupId) {
             endpoint += `?muscle_group=${muscleGroupId}`;
         }
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
 
         const method = workoutId ? 'PUT' : 'POST';
-        const endpoint = workoutId ? `/workouts/${workoutId}/` : '/workouts/';
+        const endpoint = workoutId ? `workouts/${workoutId}/` : 'workouts/';
         
         const response = await apiRequest(endpoint, method, { exercises: exercisesPayload });
 
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadWorkoutForEditing = async (id) => {
-        const response = await apiRequest(`/workouts/${id}/`);
+        const response = await apiRequest(`workouts/${id}/`);
         if (response.ok) {
             const workout = await response.json();
             document.querySelector('h1').textContent = `Edit Workout - ${workout.name}`;

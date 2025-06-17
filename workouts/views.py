@@ -247,32 +247,49 @@ class WorkoutViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save()
 
-    @action(detail=False, methods=['post'])
-    def from_template(self, request):
+    @action(detail=False, methods=['post'], url_path='from_template')
+    def create_from_template(self, request):
         template_id = request.data.get('template_id')
-        template = get_object_or_404(WorkoutTemplate, id=template_id, user=request.user)
-        workout = Workout.objects.create(
-            user=request.user,
-            template=template
-        )
-        # Copy exercises from template
-        for template_exercise in template.templateexercise_set.all():
-            workout_exercise = WorkoutExercise.objects.create(
-                workout=workout,
-                exercise=template_exercise.exercise,
-                order=template_exercise.order
+        if not template_id:
+            return Response(
+                {'error': 'Template ID is required.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
-            # Create sets for this exercise
-            for set_num in range(1, template_exercise.sets + 1):
-                Set.objects.create(
-                    workout_exercise=workout_exercise,
-                    set_number=set_num,
-                    reps=template_exercise.reps,
-                    weight=0  # Default weight, can be edited later
+
+        try:
+            template = WorkoutTemplate.objects.get(pk=template_id)
+            # You might want to add a permission check here to ensure the user can access this template
+            
+            new_workout = Workout.objects.create(
+                user=request.user,
+                template=template,
+                name=f"Workout from {template.name}"
+            )
+
+            for te in template.templateexercise_set.all():
+                we = WorkoutExercise.objects.create(
+                    workout=new_workout,
+                    exercise=te.exercise,
+                    order=te.order
                 )
-        # Set workout name in the standardized format
-        same_day_workouts = Workout.objects.filter(user=workout.user, date__date=workout.date.date()).count()
-        workout.name = f"Workout #{same_day_workouts} - {workout.date.strftime('%Y-%m-%d %H:%M')}"
-        workout.save(update_fields=["name"])
-        serializer = self.get_serializer(workout)
-        return Response(serializer.data, status=status.HTTP_201_CREATED) 
+                for i in range(te.sets):
+                    Set.objects.create(
+                        workout_exercise=we,
+                        set_number=i + 1,
+                        reps=te.reps,
+                        weight=0  # Default weight
+                    )
+            
+            serializer = WorkoutSerializer(new_workout, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except WorkoutTemplate.DoesNotExist:
+            return Response(
+                {'error': 'Template not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'An unexpected error occurred: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            ) 

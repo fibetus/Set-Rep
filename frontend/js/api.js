@@ -1,12 +1,55 @@
 const API_BASE = '/api/v1';
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
+async function refreshToken() {
+    isRefreshing = true;
+    const refresh = localStorage.getItem('refresh');
+    if (!refresh) {
+        return Promise.reject('No refresh token available.');
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error('Failed to refresh token.');
+
+        setToken(data.access, data.refresh || refresh);
+        processQueue(null, data.access);
+        return data.access;
+    } catch (error) {
+        processQueue(error, null);
+        clearToken();
+        window.location.href = 'login.html';
+        return Promise.reject(error);
+    } finally {
+        isRefreshing = false;
+    }
+}
+
 function getToken() {
     return localStorage.getItem('access');
 }
 
 function setToken(token, refresh) {
     localStorage.setItem('access', token);
-    localStorage.setItem('refresh', refresh);
+    if(refresh) localStorage.setItem('refresh', refresh);
 }
 
 function clearToken() {
@@ -15,44 +58,46 @@ function clearToken() {
 }
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-
-    // Add authorization header if token exists
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const config = {
-        method,
-        headers,
-    };
-
-    if (data) {
-        config.body = JSON.stringify(data);
-    }
-
-    try {
-        const response = await fetch(`${API_BASE}/${endpoint}`, config);
-        const responseData = await response.json();
-
-        if (!response.ok) {
-            // Handle token expiration
-            if (response.status === 401) {
-                localStorage.removeItem('access_token');
-                window.location.href = 'login.html';
-                throw new Error('Session expired. Please login again.');
-            }
-            throw new Error(responseData.detail || 'An error occurred');
+    const originalRequest = () => {
+        const token = getToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
         }
 
-        return responseData;
-    } catch (error) {
-        console.error('API request error:', error);
-        throw error;
+        const config = {
+            method,
+            headers,
+            body: data ? JSON.stringify(data) : null,
+        };
+
+        return fetch(`${API_BASE}/${endpoint}`, config);
+    };
+
+    let response = await originalRequest();
+
+    if (response.status === 401) {
+        if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject });
+            })
+            .then(token => {
+                return originalRequest();
+            })
+            .catch(err => {
+                return Promise.reject(err);
+            });
+        }
+
+        try {
+            await refreshToken();
+            response = await originalRequest();
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
+
+    return response;
 }
 
 // User related API calls
