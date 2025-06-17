@@ -1,158 +1,205 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    const exercisesGrid = document.getElementById('exercises-grid');
+    const selectedExercisesContainer = document.getElementById('selected-exercises');
+    const muscleGroupsContainer = document.getElementById('muscle-groups');
+
     const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('id');
-    const sessionControls = document.getElementById('session-controls');
-    const workoutContent = document.getElementById('workout-content');
+    const workoutId = urlParams.get('id');
 
-    if (!sessionId) {
-        // Start new session
-        sessionControls.innerHTML = `<button id="start-session-btn">Start New Session</button>`;
-        document.getElementById('start-session-btn').onclick = async () => {
-            let resp = await apiRequest('/sessions/', 'POST', { notes: '' });
-            if (resp.ok) {
-                let data = await resp.json();
-                window.location = `workout.html?id=${data.id}`;
-            } else {
-                alert('Failed to start session');
-            }
-        };
-        return;
-    }
+    let selectedExercises = new Map();
 
-    // Load session details
-    let resp = await apiRequest(`/sessions/${sessionId}/`);
-    if (!resp.ok) {
-        workoutContent.innerText = 'Failed to load session.';
-        return;
-    }
-    let session = await resp.json();
-    renderSession(session);
-
-    async function renderSession(session) {
-        let html = `<h2>Session #${session.id}</h2>`;
-        html += `<div>Start: ${new Date(session.start_time).toLocaleString()}</div>`;
-        if (session.end_time) {
-            html += `<div>End: ${new Date(session.end_time).toLocaleString()}</div>`;
-        } else {
-            html += `<button id="end-session-btn">End Session</button>`;
+    const checkAuth = () => {
+        if (!localStorage.getItem('access_token')) {
+            window.location.href = 'login.html';
+            return false;
         }
-        html += `<label>Notes:</label><textarea id="session-notes">${session.notes || ''}</textarea><button id="save-notes-btn">Save Notes</button>`;
-        html += `<h3>Logged Exercises</h3>`;
-        html += `<div id="logged-exercises"></div>`;
-        html += `<h4>Add Exercise</h4><div id="add-exercise"></div>`;
-        workoutContent.innerHTML = html;
-        document.getElementById('save-notes-btn').onclick = async () => {
-            let notes = document.getElementById('session-notes').value;
-            await apiRequest(`/sessions/${session.id}/`, 'PATCH', { notes });
-            alert('Notes saved!');
-        };
-        if (!session.end_time) {
-            document.getElementById('end-session-btn').onclick = async () => {
-                let resp = await apiRequest(`/sessions/${session.id}/end_session/`, 'POST');
-                if (resp.ok) {
-                    window.location.reload();
-                } else {
-                    alert('Failed to end session');
-                }
-            };
-        }
-        renderLoggedExercises(session.logged_exercises);
-        renderAddExercise();
-    }
+        return true;
+    };
 
-    async function renderLoggedExercises(loggedExercises) {
-        let html = '';
-        for (let le of loggedExercises) {
-            html += `<div class="exercise-block"><b>${le.exercise.name} (${le.exercise.muscle_group})</b>
-                <button onclick="deleteLoggedExercise(${le.id})">Remove</button>
-                <div>Sets:</div>
-                <table class="sets-table"><tr><th>#</th><th>Reps</th><th>Weight</th><th>Actions</th></tr>`;
-            for (let s of le.sets) {
-                html += `<tr><td>${s.set_number}</td><td>${s.reps}</td><td>${s.weight}</td>
-                    <td><button onclick="editSet(${s.id}, ${le.id})">Edit</button> <button onclick="deleteSet(${s.id}, ${le.id})">Delete</button></td></tr>`;
-            }
-            html += `</table>
-                <form onsubmit="return addSet(event, ${le.id})">
-                    <input type="number" name="reps" placeholder="Reps" min="1" required />
-                    <input type="number" name="weight" placeholder="Weight" min="0" step="0.01" required />
-                    <button type="submit">Add Set</button>
-                </form>
-            </div>`;
-        }
-        document.getElementById('logged-exercises').innerHTML = html;
-    }
+    const apiRequest = async (endpoint, method = 'GET', body = null) => {
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        });
 
-    window.addSet = async function(event, loggedExerciseId) {
-        event.preventDefault();
-        const form = event.target;
-        const reps = form.reps.value;
-        const weight = form.weight.value;
-        let resp = await apiRequest(`/logged-exercises/${loggedExerciseId}/sets/`, 'POST', { reps, weight });
-        if (resp.ok) {
-            window.location.reload();
-        } else {
-            alert('Failed to add set');
+        const config = { method, headers };
+        if (body) {
+            config.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(`/api/v1${endpoint}`, config);
+        if (response.status === 401) {
+            window.location.href = 'login.html';
+        }
+        return response;
+    };
+    
+    const loadMuscleGroups = async () => {
+        const response = await apiRequest('/muscle-groups/');
+        if (response.ok) {
+            const muscleGroups = await response.json();
+            muscleGroupsContainer.innerHTML = muscleGroups.map(mg => 
+                `<button class="muscle-group-btn" onclick="loadExercises(${mg.id})">${mg.name}</button>`
+            ).join('');
+        }
+    };
+    
+    window.loadExercises = async (muscleGroupId = null) => {
+        let endpoint = '/exercises/';
+        if (muscleGroupId) {
+            endpoint += `?muscle_group=${muscleGroupId}`;
+        }
+        const response = await apiRequest(endpoint);
+        if (response.ok) {
+            const exercises = await response.json();
+            renderAvailableExercises(exercises);
         }
     };
 
-    window.deleteSet = async function(setId, loggedExerciseId) {
-        if (!confirm('Delete this set?')) return;
-        let resp = await apiRequest(`/sets/${setId}/`, 'DELETE');
-        if (resp.ok) {
-            window.location.reload();
-        } else {
-            alert('Failed to delete set');
+    const renderAvailableExercises = (exercises) => {
+        exercisesGrid.innerHTML = exercises.map(ex => `
+            <div class="exercise-card">
+                <h3>${ex.name}</h3>
+                <p>${ex.description || 'No description available.'}</p>
+                <button onclick="addExerciseToWorkout(${ex.id}, '${ex.name}')">Add to Workout</button>
+            </div>
+        `).join('');
+    };
+
+    window.addExerciseToWorkout = (exerciseId, exerciseName) => {
+        if (!selectedExercises.has(exerciseId)) {
+            selectedExercises.set(exerciseId, {
+                id: exerciseId,
+                name: exerciseName,
+                sets: [{ reps: 10, weight: 20 }] // Start with one default set
+            });
+            renderSelectedExercises();
         }
     };
 
-    window.editSet = async function(setId, loggedExerciseId) {
-        const reps = prompt('New reps:');
-        const weight = prompt('New weight:');
-        if (!reps || !weight) return;
-        let resp = await apiRequest(`/sets/${setId}/`, 'PATCH', { reps, weight });
-        if (resp.ok) {
-            window.location.reload();
-        } else {
-            alert('Failed to update set');
+    window.removeExercise = (exerciseId) => {
+        if (selectedExercises.has(exerciseId)) {
+            selectedExercises.delete(exerciseId);
+            renderSelectedExercises();
         }
     };
 
-    window.deleteLoggedExercise = async function(loggedExerciseId) {
-        if (!confirm('Remove this exercise and all its sets?')) return;
-        let resp = await apiRequest(`/logged-exercises/${loggedExerciseId}/`, 'DELETE');
-        if (resp.ok) {
-            window.location.reload();
-        } else {
-            alert('Failed to remove exercise');
+    window.addSet = (exerciseId) => {
+        const exercise = selectedExercises.get(exerciseId);
+        if (exercise) {
+            exercise.sets.push({ reps: 10, weight: 20 });
+            renderSelectedExercises();
         }
     };
 
-    async function renderAddExercise() {
-        let resp = await apiRequest('/exercises/');
-        if (!resp.ok) {
-            document.getElementById('add-exercise').innerText = 'Failed to load exercises.';
+    window.removeSet = (exerciseId, setIndex) => {
+        const exercise = selectedExercises.get(exerciseId);
+        if (exercise && exercise.sets[setIndex]) {
+            exercise.sets.splice(setIndex, 1);
+            renderSelectedExercises();
+        }
+    };
+    
+    window.updateSet = (exerciseId, setIndex, field, value) => {
+        const exercise = selectedExercises.get(exerciseId);
+        if (exercise && exercise.sets[setIndex]) {
+            exercise.sets[setIndex][field] = value;
+        }
+    };
+
+    const renderSelectedExercises = () => {
+        selectedExercisesContainer.innerHTML = '';
+        if (selectedExercises.size === 0) {
+            selectedExercisesContainer.innerHTML = '<p>No exercises added yet.</p>';
             return;
         }
-        let exercises = await resp.json();
-        let html = `<form id="add-exercise-form">
-            <select name="exercise_id" required>
-                <option value="">Select exercise</option>`;
-        for (let ex of exercises) {
-            html += `<option value="${ex.id}">${ex.name} (${ex.muscle_group})</option>`;
+
+        selectedExercises.forEach((exercise) => {
+            const exerciseEl = document.createElement('div');
+            exerciseEl.className = 'exercise-set';
+            
+            const setsHTML = exercise.sets.map((set, index) => `
+                <div class="set-inputs">
+                    <span>Set ${index + 1}</span>
+                    <input type="number" placeholder="Reps" value="${set.reps}" oninput="updateSet(${exercise.id}, ${index}, 'reps', this.value)">
+                    <input type="number" placeholder="Weight" step="0.5" value="${set.weight}" oninput="updateSet(${exercise.id}, ${index}, 'weight', this.value)">
+                    <button class="delete-set-btn" onclick="removeSet(${exercise.id}, ${index})">x</button>
+                </div>
+            `).join('');
+
+            exerciseEl.innerHTML = `
+                <div class="exercise-set-header">
+                    <h3>${exercise.name}</h3>
+                    <button class="remove-exercise-btn" onclick="removeExercise(${exercise.id})">Remove</button>
+                </div>
+                ${setsHTML}
+                <button class="add-set-btn" onclick="addSet(${exercise.id})">Add Set</button>
+            `;
+            selectedExercisesContainer.appendChild(exerciseEl);
+        });
+    };
+
+    window.saveWorkout = async () => {
+        if (!checkAuth()) return;
+
+        const exercisesPayload = Array.from(selectedExercises.values()).map(ex => ({
+            exercise_id: ex.id,
+            sets: ex.sets.map(set => ({
+                reps: parseInt(set.reps, 10),
+                weight: parseFloat(set.weight)
+            }))
+        }));
+
+        const method = workoutId ? 'PUT' : 'POST';
+        const endpoint = workoutId ? `/workouts/${workoutId}/` : '/workouts/';
+        
+        const response = await apiRequest(endpoint, method, { exercises: exercisesPayload });
+
+        if (response.ok) {
+            showNotification('Workout saved successfully!', 'success');
+            setTimeout(() => window.location.href = 'index.html', 1500);
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to save workout.', 'error');
         }
-        html += `</select>
-            <button type="submit">Add Exercise</button>
-        </form>`;
-        document.getElementById('add-exercise').innerHTML = html;
-        document.getElementById('add-exercise-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const exercise_id = e.target.exercise_id.value;
-            let resp = await apiRequest(`/sessions/${sessionId}/logged-exercises/`, 'POST', { exercise_id });
-            if (resp.ok) {
-                window.location.reload();
-            } else {
-                alert('Failed to add exercise');
-            }
-        };
+    };
+
+    const loadWorkoutForEditing = async (id) => {
+        const response = await apiRequest(`/workouts/${id}/`);
+        if (response.ok) {
+            const workout = await response.json();
+            document.querySelector('h1').textContent = `Edit Workout - ${workout.name}`;
+            
+            selectedExercises.clear();
+            workout.exercises.forEach(ex => {
+                selectedExercises.set(ex.exercise.id, {
+                    id: ex.exercise.id,
+                    name: ex.exercise.name,
+                    sets: ex.sets.map(s => ({ reps: s.reps, weight: s.weight }))
+                });
+            });
+            renderSelectedExercises();
+        } else {
+            showNotification('Failed to load workout for editing.', 'error');
+        }
+    };
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
+    
+    // Initial Load
+    if (!checkAuth()) return;
+    
+    loadMuscleGroups();
+    loadExercises(); // Load all exercises initially
+    renderSelectedExercises();
+
+    if (workoutId) {
+        loadWorkoutForEditing(workoutId);
     }
 }); 

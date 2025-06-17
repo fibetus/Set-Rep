@@ -40,4 +40,9 @@ if settings.DEBUG:
         re_path(r'^index\.html$', TemplateView.as_view(template_name='index.html')),
         re_path(r'^workout\.html$', TemplateView.as_view(template_name='workout.html')),
         re_path(r'^plan\.html$', TemplateView.as_view(template_name='plan.html')),
+    ]
+
+    # Serve any HTML file in the frontend directory (for development only)
+    urlpatterns += [
+        re_path(r'^(?P<filename>[-\w]+\.html)$', TemplateView.as_view(), name='catch_all_html'),
     ] 

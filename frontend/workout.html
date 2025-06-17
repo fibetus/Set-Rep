@@ -23,13 +23,25 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             cursor: pointer;
-            background: #f5f5f5;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
         }
 
+        .muscle-group-btn:nth-child(1) { background: #FF6B6B; }
+        .muscle-group-btn:nth-child(2) { background: #4ECDC4; }
+        .muscle-group-btn:nth-child(3) { background: #45B7D1; }
+        .muscle-group-btn:nth-child(4) { background: #96CEB4; }
+        .muscle-group-btn:nth-child(5) { background: #FFEEAD; color: #333; }
+        .muscle-group-btn:nth-child(6) { background: #D4A5A5; }
+        .muscle-group-btn:nth-child(7) { background: #9B59B6; }
+        .muscle-group-btn:nth-child(8) { background: #3498DB; }
+        .muscle-group-btn:nth-child(9) { background: #E67E22; }
+        .muscle-group-btn:nth-child(10) { background: #2ECC71; }
+
         .muscle-group-btn.active {
-            background: #007bff;
-            color: white;
-            border-color: #0056b3;
+            transform: scale(1.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
         .exercises-grid {
@@ -107,9 +119,113 @@
             background: #dc3545;
             color: white;
         }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification.success {
+            background-color: #28a745;
+        }
+
+        .notification.error {
+            background-color: #dc3545;
+        }
+
+        .notification.info {
+            background-color: #17a2b8;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .exercise-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .edit-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .edit-exercise-form {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .edit-exercise-form h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .edit-exercise-form input,
+        .edit-exercise-form textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .edit-exercise-form textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .edit-exercise-form button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .edit-exercise-form button:first-of-type {
+            background: #28a745;
+            color: white;
+        }
+
+        .edit-exercise-form button:last-of-type {
+            background: #dc3545;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <nav>
+        <button onclick="window.location.href='index.html'">Home</button>
+    </nav>
     <div class="workout-container">
         <h1>Create Workout</h1>
         
@@ -135,6 +251,42 @@
             <button class="save-template" onclick="saveAsTemplate()">Save as Template</button>
             <button class="cancel-workout" onclick="cancelWorkout()">Cancel</button>
         </div>
+    </div>
+
+    <div id="exercise-grid" class="exercise-grid"></div>
+    
+    <!-- Edit Exercise Form -->
+    <div id="edit-exercise-form" class="edit-exercise-form" style="display: none;">
+        <h3>Edit Exercise</h3>
+        <form id="exercise-edit-form">
+            <input type="hidden" id="edit-exercise-id">
+            <div>
+                <label for="edit-exercise-name">Name:</label>
+                <input type="text" id="edit-exercise-name" required>
+            </div>
+            <div>
+                <label for="edit-exercise-description">Description:</label>
+                <textarea id="edit-exercise-description"></textarea>
+            </div>
+            <div>
+                <label for="edit-exercise-muscle-group">Muscle Group:</label>
+                <select id="edit-exercise-muscle-group" required>
+                    <option value="chest">Chest</option>
+                    <option value="back">Back</option>
+                    <option value="shoulders">Shoulders</option>
+                    <option value="biceps">Biceps</option>
+                    <option value="triceps">Triceps</option>
+                    <option value="legs">Legs</option>
+                    <option value="abs">Abs</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="exercise-actions">
+                <button type="submit">Save Changes</button>
+                <button type="button" onclick="closeEditForm()">Cancel</button>
+            </div>
+        </form>
     </div>
 
     <script type="text/javascript" src="/static/js/api.js"></script>

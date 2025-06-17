@@ -67,13 +67,19 @@
 </head>
 <body>
     <div class="plan-container">
+        <nav>
+            <button onclick="window.location.href='index.html'">Home</button>
+        </nav>
         <h1>Training Plans</h1>
-        
         <!-- Templates Grid -->
         <div class="templates-grid" id="templates-grid">
             <!-- Will be populated by JavaScript -->
         </div>
-
+        <!-- Accept/Cancel for editing (hidden by default, shown in edit mode) -->
+        <div id="template-edit-actions" style="display:none; margin-top:20px;">
+            <button onclick="acceptTemplateChanges()" class="use-template">Accept Changes</button>
+            <button onclick="cancelTemplateChanges()" class="delete-template">Cancel Changes</button>
+        </div>
         <!-- Create New Template Button -->
         <button onclick="window.location.href='workout.html'" class="use-template">
             Create New Template
@@ -153,7 +159,7 @@
 
         // Edit template
         function editTemplate(templateId) {
-            window.location.href = `workout.html?template=${templateId}`;
+            window.location.href = `edit-template.html?id=${templateId}`;
         }
 
         // Delete template

@@ -169,4 +169,71 @@ label {
 
 #main-actions button:last-child:hover {
     background: #218838;
+}
+
+.workout-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.workout-card-actions .edit-btn,
+.workout-card-actions .delete-btn {
+    margin: 0;
+}
+
+.edit-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+    transition: background 0.2s;
+}
+.edit-btn:hover {
+    background: #138496;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 0;
+    margin-left: 0;
+    transition: background 0.2s;
+}
+
+.delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-left: 10px;
+    transition: background 0.2s;
+}
+.delete-btn:hover {
+    background: #c82333;
+}
+
+.exercise-card.selected {
+    border: 2px solid #007bff;
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.25);
+}
+
+.selected-exercise-tag {
+    display: inline-block;
+    background-color: #e0e0e0;
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 15px;
+    margin: 5px;
+    font-size: 14px;
 } 

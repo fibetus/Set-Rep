@@ -7,7 +7,8 @@ Set & Rep is a modern, user-centric web application designed to replace traditio
 - User authentication and authorization
 - Pre-populated exercise database with muscle group categorization
 - Workout session tracking with exercise logging
-- Set and rep tracking with weight recording
+- Individual set tracking with different weights and reps per set
+- Automatic workout naming with date and time
 - Training plan creation and management
 - API-first design for frontend flexibility
 
@@ -28,6 +29,8 @@ Set & Rep is a modern, user-centric web application designed to replace traditio
 - PostgreSQL (for local development)
 
 ## Getting Started
+
+### Using Docker (Recommended)
 
 1. Clone the repository:
    ```bash
@@ -61,6 +64,31 @@ Set & Rep is a modern, user-centric web application designed to replace traditio
    ```
 
 The application will be available at http://localhost:8000
+
+### Local Development
+
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Create a `.env` file (same as above)
+
+4. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+
+5. Start the development server:
+   ```bash
+   python manage.py runserver
+   ```
 
 ## API Documentation
 
@@ -101,14 +129,14 @@ flake8
 - GET /api/v1/exercises/ - List all exercises
 - GET /api/v1/exercises/{id}/ - Retrieve specific exercise
 
-### Workout Sessions
-- GET /api/v1/sessions/ - List user's workout sessions
-- POST /api/v1/sessions/ - Create new workout session
-- GET /api/v1/sessions/{id}/ - Retrieve specific session
-- PUT/PATCH /api/v1/sessions/{id}/ - Update session
-- DELETE /api/v1/sessions/{id}/ - Delete session
-- POST /api/v1/sessions/{id}/end_session/ - End workout session
-- POST /api/v1/sessions/{id}/add_exercise/ - Add exercise to session
+### Workouts
+- GET /api/v1/workouts/ - List user's workouts
+- POST /api/v1/workouts/ - Create new workout
+- GET /api/v1/workouts/{id}/ - Retrieve specific workout
+- PUT/PATCH /api/v1/workouts/{id}/ - Update workout
+- DELETE /api/v1/workouts/{id}/ - Delete workout
+- POST /api/v1/workouts/{id}/add_exercise/ - Add exercise to workout
+- POST /api/v1/workouts/{id}/add_set/ - Add set to exercise
 
 ### Training Plans
 - GET /api/v1/plans/ - List user's training plans
@@ -116,7 +144,6 @@ flake8
 - GET /api/v1/plans/{id}/ - Retrieve specific plan
 - PUT/PATCH /api/v1/plans/{id}/ - Update plan
 - DELETE /api/v1/plans/{id}/ - Delete plan
-- POST /api/v1/plans/{id}/create_from_session/ - Create plan from session
 
 ## Contributing
 

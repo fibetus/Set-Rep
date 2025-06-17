@@ -140,10 +140,11 @@ class WorkoutTemplateSerializer(serializers.ModelSerializer):
 class WorkoutExerciseSerializer(serializers.ModelSerializer):
     exercise = ExerciseSerializer(read_only=True)
     exercise_id = serializers.IntegerField(write_only=True)
+    sets = SetSerializer(many=True, read_only=True)
 
     class Meta:
         model = WorkoutExercise
-        fields = ['id', 'exercise', 'exercise_id', 'sets', 'reps', 'weight', 'rest_time', 'order', 'notes']
+        fields = ['id', 'exercise', 'exercise_id', 'sets', 'rest_time', 'order', 'notes']
 
 class WorkoutSerializer(serializers.ModelSerializer):
     exercises = WorkoutExerciseSerializer(source='workoutexercise_set', many=True, read_only=True)
@@ -151,5 +152,5 @@ class WorkoutSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workout
-        fields = ['id', 'user', 'template', 'date', 'notes', 'exercises']
-        read_only_fields = ['user', 'date'] 
+        fields = ['id', 'user', 'template', 'date', 'name', 'notes', 'exercises']
+        read_only_fields = ['user', 'date', 'name'] 

@@ -129,18 +129,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 const workouts = await response.json();
                 const workoutsContainer = document.getElementById('workouts-container');
                 if (workoutsContainer) {
-                    workoutsContainer.innerHTML = workouts.map(workout => `
+                    workoutsContainer.innerHTML = workouts.map(workout => {
+                        // Use name if present, otherwise use formatted date/time
+                        let displayName = (workout.name && workout.name !== '' && workout.name !== 'undefined')
+                            ? workout.name
+                            : (workout.date ? `${new Date(workout.date).toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'})} - Workout #${workout.id}: ${new Date(workout.date).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'})}` : 'Workout');
+                        return `
                         <div class="workout-card">
-                            <h3>${workout.name}</h3>
-                            <p>Date: ${new Date(workout.date).toLocaleDateString()}</p>
-                            <p>Exercises: ${workout.exercises.length}</p>
+                            <h3>${displayName}</h3>
+                            <p>Date: ${workout.date ? new Date(workout.date).toLocaleDateString('pl-PL', {day:'2-digit', month:'2-digit', year:'numeric'}) : ''}</p>
+                            <p>Exercises: ${workout.exercises ? workout.exercises.length : 0}</p>
+                            <div class="workout-card-actions">
+                                <button class="edit-btn" onclick="editWorkoutFromHome(${workout.id})">Edit</button>
+                                <button class="delete-btn" onclick="deleteWorkoutFromHome(${workout.id})">Delete</button>
+                            </div>
                         </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             }
         } catch (error) {
             console.error('Error loading workouts:', error);
         }
+    };
+
+    // Home button handler
+    window.goHome = function() {
+        window.location.href = 'index.html';
+    };
+
+    // Edit workout from home page
+    window.editWorkoutFromHome = function(workoutId) {
+        window.location.href = `/static/edit-workout.html?id=${workoutId}`;
+    };
+
+    window.acceptWorkoutChanges = function() {
+        window.location.href = 'index.html';
+    };
+    window.cancelWorkoutChanges = function() {
+        window.location.href = 'index.html';
     };
 
     // Check authentication status on protected pages
@@ -157,4 +184,24 @@ document.addEventListener('DOMContentLoaded', () => {
             loadWorkouts();
         }
     }
+
+    window.deleteWorkoutFromHome = async function(workoutId) {
+        if (!confirm('Are you sure you want to delete this workout?')) return;
+        try {
+            const response = await fetch(`/api/v1/workouts/${workoutId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`
+                }
+            });
+            if (response.ok) {
+                // Reload workouts
+                loadWorkouts();
+            } else {
+                alert('Failed to delete workout');
+            }
+        } catch (error) {
+            alert('Failed to delete workout');
+        }
+    };
 }); 

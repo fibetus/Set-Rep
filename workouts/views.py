@@ -198,6 +198,26 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
                 order=i
             )
 
+    def update(self, request, *args, **kwargs):
+        template = self.get_object()
+        serializer = self.get_serializer(template, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_template = serializer.save()
+
+        exercises_data = request.data.get('exercises')
+        if exercises_data is not None:
+            updated_template.templateexercise_set.all().delete()
+            for i, exercise_data in enumerate(exercises_data):
+                TemplateExercise.objects.create(
+                    template=updated_template,
+                    exercise_id=exercise_data['exercise_id'],
+                    sets=exercise_data.get('sets', 3),
+                    reps=exercise_data.get('reps', 10),
+                    order=i
+                )
+        
+        return Response(self.get_serializer(updated_template).data)
+
 class WorkoutViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -207,38 +227,78 @@ class WorkoutViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         workout = serializer.save(user=self.request.user)
-        
-        # Create workout exercises
+        # Create workout exercises and sets
         exercises_data = self.request.data.get('exercises', [])
         for i, exercise_data in enumerate(exercises_data):
-            WorkoutExercise.objects.create(
+            workout_exercise = WorkoutExercise.objects.create(
                 workout=workout,
                 exercise_id=exercise_data['exercise_id'],
-                sets=exercise_data.get('sets', 3),
-                reps=exercise_data.get('reps', 10),
-                weight=exercise_data.get('weight'),
                 order=i
             )
+            for j, set_data in enumerate(exercise_data.get('sets', []), start=1):
+                Set.objects.create(
+                    workout_exercise=workout_exercise,
+                    set_number=j,
+                    reps=set_data['reps'],
+                    weight=set_data['weight']
+                )
+        # Return the serialized workout
+        return Response(self.get_serializer(workout).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        workout = self.get_object()
+        serializer = self.get_serializer(workout, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_workout = serializer.save()
+
+        # Clear existing exercises and sets
+        updated_workout.workoutexercise_set.all().delete()
+
+        # Create new exercises and sets from payload
+        exercises_data = request.data.get('exercises', [])
+        for i, exercise_data in enumerate(exercises_data):
+            workout_exercise = WorkoutExercise.objects.create(
+                workout=updated_workout,
+                exercise_id=exercise_data['exercise_id'],
+                order=i
+            )
+            for j, set_data in enumerate(exercise_data.get('sets', []), start=1):
+                Set.objects.create(
+                    workout_exercise=workout_exercise,
+                    set_number=j,
+                    reps=set_data['reps'],
+                    weight=set_data['weight']
+                )
+        
+        return Response(self.get_serializer(updated_workout).data)
 
     @action(detail=False, methods=['post'])
     def from_template(self, request):
         template_id = request.data.get('template_id')
         template = get_object_or_404(WorkoutTemplate, id=template_id, user=request.user)
-        
         workout = Workout.objects.create(
             user=request.user,
             template=template
         )
-        
         # Copy exercises from template
         for template_exercise in template.templateexercise_set.all():
-            WorkoutExercise.objects.create(
+            workout_exercise = WorkoutExercise.objects.create(
                 workout=workout,
                 exercise=template_exercise.exercise,
-                sets=template_exercise.sets,
-                reps=template_exercise.reps,
                 order=template_exercise.order
             )
-        
+            # Create sets for this exercise
+            for set_num in range(1, template_exercise.sets + 1):
+                Set.objects.create(
+                    workout_exercise=workout_exercise,
+                    set_number=set_num,
+                    reps=template_exercise.reps,
+                    weight=0  # Default weight, can be edited later
+                )
+        # Set workout name in the standardized format
+        same_day_workouts = Workout.objects.filter(user=workout.user, date__date=workout.date.date()).count()
+        workout.name = f"Workout #{same_day_workouts} - {workout.date.strftime('%Y-%m-%d %H:%M')}"
+        workout.save(update_fields=["name"])
         serializer = self.get_serializer(workout)
+        return Response(serializer.data, status=status.HTTP_201_CREATED) 
         return Response(serializer.data, status=status.HTTP_201_CREATED) 
