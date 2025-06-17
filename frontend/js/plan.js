@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.editPlan = function(planId) {
-        window.location.href = `/static/edit-template.html?id=${planId}`;
+        window.location.href = `edit-template.html?id=${planId}`;
     };
 
     window.acceptTemplateChanges = function() {

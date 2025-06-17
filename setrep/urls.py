@@ -10,6 +10,8 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from django.views.generic.base import RedirectView
+from django.http import HttpResponse
 
 def serve_static(request, path):
     return serve(request, path, document_root=settings.STATICFILES_DIRS[0])
@@ -27,22 +29,21 @@ urlpatterns = [
 
 # Serve frontend files
 if settings.DEBUG:
-    # Serve static files with proper MIME types
+    # This will serve static files like CSS, JS, and also our HTML files
+    # if they are requested with /static/ prefix.
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+    # This will serve the root path with index.html
     urlpatterns += [
-        re_path(r'^static/(?P<path>.*)$', serve_static),
-    ]
-    
-    # Serve HTML files
-    urlpatterns += [
-        re_path(r'^login\.html$', TemplateView.as_view(template_name='login.html')),
-        re_path(r'^register\.html$', TemplateView.as_view(template_name='register.html')),
         re_path(r'^$', TemplateView.as_view(template_name='index.html'), name='home'),
-        re_path(r'^index\.html$', TemplateView.as_view(template_name='index.html')),
-        re_path(r'^workout\.html$', TemplateView.as_view(template_name='workout.html')),
-        re_path(r'^plan\.html$', TemplateView.as_view(template_name='plan.html')),
+        re_path(r'^favicon\.ico$', lambda request: HttpResponse(status=204)),
     ]
 
-    # Serve any HTML file in the frontend directory (for development only)
+    # Add this to handle direct navigation to your main html pages
+    # without the need for them to be in a static folder.
+    # The 'catch_all_html' was the problem, so let's be explicit.
     urlpatterns += [
-        re_path(r'^(?P<filename>[-\w]+\.html)$', TemplateView.as_view(), name='catch_all_html'),
+        re_path(r'^(?P<page_name>index|login|register|plan|workout|edit-template|edit-workout)\.html$', 
+                lambda request, page_name: TemplateView.as_view(template_name=f"{page_name}.html")(request), 
+                name='html_pages'),
     ] 

@@ -6,26 +6,24 @@
     <link rel="stylesheet" type="text/css" href="/static/css/style.css">
 </head>
 <body>
-    <div class="main-container">
+    <div class="workout-container">
         <h1>Edit Template</h1>
         
         <form id="edit-template-form">
             <label for="template-name">Name</label>
-            <input type="text" id="template-name" name="name" required>
+            <input type="text" id="template-name" name="name" required class="form-input">
 
             <label for="template-description">Description</label>
-            <textarea id="template-description" name="description"></textarea>
+            <textarea id="template-description" name="description" class="form-textarea"></textarea>
             
-            <h2 style="margin-top: 20px;">Selected Exercises</h2>
-            <div id="selected-exercises-list">Your selected exercises will appear here.</div>
-
-            <div class="form-actions" style="margin-top: 20px;">
+            <div class="form-actions" style="margin-top: 20px; margin-bottom: 30px;">
                 <button type="submit" class="save-btn">Accept Changes</button>
-                <button type="button" class="cancel-btn" onclick="window.location.href='/plan.html'">Cancel Changes</button>
+                <button type="button" class="cancel-btn" onclick="window.location.href='/plan.html'">Cancel</button>
             </div>
         </form>
 
         <h2 style="margin-top: 40px;">Choose Exercises</h2>
+        <p>Exercises already in this template are highlighted in blue. Click an exercise to add or remove it.</p>
         <div id="muscle-groups" class="muscle-groups"></div>
         <div id="exercises-grid" class="exercises-grid"></div>
         

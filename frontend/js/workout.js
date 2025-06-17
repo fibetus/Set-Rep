@@ -193,13 +193,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Initial Load
-    if (!checkAuth()) return;
-    
-    loadMuscleGroups();
-    loadExercises(); // Load all exercises initially
-    renderSelectedExercises();
+    const init = async () => {
+        if (!checkAuth()) return;
+        
+        await loadMuscleGroups();
+        await window.loadExercises(); // Load all exercises initially
+        
+        if (workoutId) {
+            await loadWorkoutForEditing(workoutId);
+        } else {
+            renderSelectedExercises();
+        }
+    };
 
-    if (workoutId) {
-        loadWorkoutForEditing(workoutId);
-    }
+    init();
 }); 

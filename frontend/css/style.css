@@ -236,4 +236,9 @@ label {
     border-radius: 15px;
     margin: 5px;
     font-size: 14px;
-} 
+}
+
+.muscle-group-btn:nth-child(4) { background-color: #90ee90; } /* Chest - Light Green */
+.muscle-group-btn:nth-child(5) { background-color: #f0e68c; } /* Legs - Khaki */
+.muscle-group-btn:nth-child(6) { background-color: #d3a1a1; } /* Shoulders - Rosy Brown */
+.muscle-group-btn:nth-child(7) { background-color: #9370db; } /* Triceps - Medium Purple */ 

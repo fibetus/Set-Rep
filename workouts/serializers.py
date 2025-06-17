@@ -153,4 +153,48 @@ class WorkoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workout
         fields = ['id', 'user', 'template', 'date', 'name', 'notes', 'exercises']
-        read_only_fields = ['user', 'date', 'name'] 
+        read_only_fields = ['user', 'date', 'name']
+
+    def create(self, validated_data):
+        exercises_data = self.context['request'].data.get('exercises', [])
+        workout = Workout.objects.create(**validated_data)
+
+        for i, exercise_data in enumerate(exercises_data):
+            # Create the WorkoutExercise instance
+            workout_exercise = WorkoutExercise.objects.create(
+                workout=workout,
+                exercise_id=exercise_data['exercise_id'],
+                order=i
+            )
+            # Now, iterate over the sets for this exercise
+            for j, set_data in enumerate(exercise_data.get('sets', [])):
+                Set.objects.create(
+                    workout_exercise=workout_exercise,
+                    set_number=j + 1,  # Use the loop index for set number
+                    reps=set_data['reps'],
+                    weight=set_data['weight']
+                )
+        return workout
+
+    def update(self, instance, validated_data):
+        instance.notes = validated_data.get('notes', instance.notes)
+        instance.save()
+
+        exercises_data = self.context['request'].data.get('exercises')
+        if exercises_data is not None:
+            instance.workoutexercise_set.all().delete()
+            for exercise_data in exercises_data:
+                workout_exercise = WorkoutExercise.objects.create(
+                    workout=instance,
+                    exercise_id=exercise_data['exercise_id'],
+                    order=exercise_data.get('order', 0)
+                )
+                # Now, iterate over the sets for this exercise
+                for j, set_data in enumerate(exercise_data.get('sets', [])):
+                    Set.objects.create(
+                        workout_exercise=workout_exercise,
+                        set_number=j + 1, # Use the loop index for set number
+                        reps=set_data['reps'],
+                        weight=set_data['weight']
+                    )
+        return instance 
