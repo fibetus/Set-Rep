@@ -108,9 +108,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         allExercises = await exercisesRes.json();
         const muscleGroups = await muscleGroupsRes.json();
 
-        nameInput.value = template.name;
-        descriptionInput.value = template.description;
-        template.exercises.forEach(ex => selectedExerciseIds.add(ex.exercise.id));
+        if (!isCreating) {
+            const templateRes = await apiRequest(`workout-templates/${templateId}/`);
+            if (!templateRes.ok) throw new Error('Failed to load template.');
+            const template = await templateRes.json();
+            
+            nameInput.value = template.name;
+            descriptionInput.value = template.description;
+            if (template.exercises && Array.isArray(template.exercises)) {
+                template.exercises.forEach(ex => selectedExerciseIds.add(ex.exercise.id));
+            }
+        }
         
         renderMuscleGroups(muscleGroups);
         renderExercises(allExercises);

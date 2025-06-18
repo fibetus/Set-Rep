@@ -164,6 +164,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.saveAsTemplate = async () => {
+        if (!checkAuth()) return;
+
+        const templateName = prompt("Please enter a name for this template:", "New Workout Template");
+        if (!templateName) return; // User cancelled
+
+        const exercisesPayload = Array.from(selectedExercises.values()).map((ex, index) => ({
+            exercise_id: ex.id,
+            sets: ex.sets.length,
+            reps: ex.sets.length > 0 ? parseInt(ex.sets[0].reps, 10) : 10, // Use reps from the first set or default
+            order: index
+        }));
+
+        const response = await apiRequest('workout-templates/', 'POST', {
+            name: templateName,
+            description: "Saved from an active workout session.",
+            exercises: exercisesPayload
+        });
+
+        if (response.ok) {
+            showNotification('Workout saved as a template successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showNotification(error.detail || 'Failed to save as template.', 'error');
+        }
+    };
+
     const loadWorkoutForEditing = async (id) => {
         const response = await apiRequest(`workouts/${id}/`);
         if (response.ok) {
