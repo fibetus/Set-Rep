@@ -252,44 +252,47 @@ class WorkoutViewSet(viewsets.ModelViewSet):
         template_id = request.data.get('template_id')
         if not template_id:
             return Response(
-                {'error': 'Template ID is required.'},
+                {'error': 'Template ID not provided'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            template = WorkoutTemplate.objects.get(pk=template_id)
-            # You might want to add a permission check here to ensure the user can access this template
-            
-            new_workout = Workout.objects.create(
-                user=request.user,
-                template=template,
-                name=f"Workout from {template.name}"
-            )
+        template = get_object_or_404(WorkoutTemplate, id=template_id, user=request.user)
 
-            for te in template.templateexercise_set.all():
-                we = WorkoutExercise.objects.create(
-                    workout=new_workout,
-                    exercise=te.exercise,
-                    order=te.order
+        # Create new workout without a name, the model will handle it
+        new_workout = Workout.objects.create(
+            user=request.user,
+            template=template
+        )
+
+        # Copy exercises from template
+        for template_exercise in template.templateexercise_set.all().order_by('order'):
+            workout_exercise = WorkoutExercise.objects.create(
+                workout=new_workout,
+                exercise=template_exercise.exercise,
+                order=template_exercise.order,
+                rest_time=template_exercise.rest_time
+            )
+            # Create sets for this exercise
+            for i in range(template_exercise.sets):
+                Set.objects.create(
+                    workout_exercise=workout_exercise,
+                    set_number=i + 1,
+                    reps=template_exercise.reps,
+                    weight=0 # default weight
                 )
-                for i in range(te.sets):
-                    Set.objects.create(
-                        workout_exercise=we,
-                        set_number=i + 1,
-                        reps=te.reps,
-                        weight=0  # Default weight
-                    )
-            
-            serializer = WorkoutSerializer(new_workout, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        serializer = self.get_serializer(new_workout)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        except WorkoutTemplate.DoesNotExist:
-            return Response(
-                {'error': 'Template not found.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            return Response(
-                {'error': f'An unexpected error occurred: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            ) 
+class UserDataView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        data = {
+            'username': user.username,
+            'email': user.email,
+            'date_joined': user.date_joined,
+            'last_login': user.last_login
+        }
+        return Response(data) 

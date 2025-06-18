@@ -64,15 +64,21 @@ class Workout(models.Model):
         return f"Workout on {self.date.strftime('%Y-%m-%d %H:%M')}"
 
     def save(self, *args, **kwargs):
-        creating = self._state.adding
-        super().save(*args, **kwargs)
-        if creating and not self.name:
+        if not self.pk:  # If this is a new object
+            super().save(*args, **kwargs)  # Save to get an ID
+            
+            # Determine the daily count
             same_day_workouts = Workout.objects.filter(
                 user=self.user,
                 date__date=self.date.date()
             ).count()
+
             self.name = f"Workout #{same_day_workouts} - {self.date.strftime('%Y-%m-%d %H:%M')}"
-            super().save(update_fields=["name"])
+            
+            # We only want to save the name field, not trigger a full save again
+            super().save(update_fields=['name'])
+        else:
+            super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['-date']
