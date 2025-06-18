@@ -26,6 +26,20 @@
     </div>
     <script type="text/javascript" src="/static/js/api.js"></script>
     <script type="text/javascript">
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+        const config = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+        };
+        if (body) config.body = JSON.stringify(body);
+        const response = await fetch('/api/v1/' + endpoint, config);
+        if (!response.ok) throw new Error('API error');
+        return response.json();
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const templateId = urlParams.get('id');
