@@ -142,7 +142,7 @@
             return card;
         }
 
-        // Use template
+       // Use template
         async function useTemplate(templateId) {
             try {
                 const response = await fetch('/api/v1/workouts/from_template/', {
@@ -155,7 +155,8 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = 'workout.html';
+                    const newWorkout = await response.json();
+                    window.location.href = `workout.html?id=${newWorkout.id}`;
                 } else {
                     const error = await response.json();
                     alert(error.detail || 'Failed to use template');
