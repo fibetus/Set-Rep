@@ -93,9 +93,18 @@
             try {
                 const response = await fetch('/api/v1/workout-templates/', {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access')}`
                     }
                 });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load templates');
+                }
+                
                 const templates = await response.json();
                 
                 const container = document.getElementById('templates-grid');
@@ -140,7 +149,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access')}`
                     },
                     body: JSON.stringify({ template_id: templateId })
                 });
@@ -172,7 +181,7 @@
                 const response = await fetch(`/api/v1/workout-templates/${templateId}/`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('access')}`
                     }
                 });
 

@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedExercises = new Map();
 
     const checkAuth = () => {
-        if (!localStorage.getItem('access_token')) {
+        if (!localStorage.getItem('access')) {
             window.location.href = 'login.html';
             return false;
         }
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiRequest = async (endpoint, method = 'GET', body = null) => {
         const headers = new Headers({
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${localStorage.getItem('access')}`
         });
 
         const config = { method, headers };

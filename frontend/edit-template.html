@@ -26,20 +26,6 @@
     </div>
     <script type="text/javascript" src="/static/js/api.js"></script>
     <script type="text/javascript">
-    async function apiRequest(endpoint, method = 'GET', body = null) {
-        const config = {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-        };
-        if (body) config.body = JSON.stringify(body);
-        const response = await fetch('/api/v1/' + endpoint, config);
-        if (!response.ok) throw new Error('API error');
-        return response.json();
-    }
-
     document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const templateId = urlParams.get('id');
@@ -47,30 +33,80 @@
             window.location.href = 'plan.html';
             return;
         }
-        // Load template data
-        const template = await apiRequest(`workout-templates/${templateId}/`);
-        document.getElementById('template-name').value = template.name;
-        document.getElementById('template-description').value = template.description || '';
-        // Load exercises
-        const exercises = await apiRequest('exercises/');
-        const select = document.getElementById('template-exercises');
-        exercises.forEach(ex => {
-            const option = document.createElement('option');
-            option.value = ex.id;
-            option.textContent = `${ex.name} (${ex.muscle_groups.map(mg => mg.name).join(', ')})`;
-            if (template.exercises.some(e => e.exercise.id === ex.id)) option.selected = true;
-            select.appendChild(option);
-        });
-        // Handle form submit
-        document.getElementById('edit-template-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('template-name').value;
-            const description = document.getElementById('template-description').value;
-            const exercises = Array.from(select.selectedOptions).map(o => o.value);
-            await apiRequest(`workout-templates/${templateId}/`, 'PATCH', { name, description, exercises });
-            window.location.href = 'index.html';
-        };
+        
+        try {
+            // Load template data
+            const templateResponse = await fetch(`/api/v1/workout-templates/${templateId}/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access')}`
+                }
+            });
+            
+            if (!templateResponse.ok) {
+                if (templateResponse.status === 401) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                throw new Error('Failed to load template');
+            }
+            
+            const template = await templateResponse.json();
+            document.getElementById('template-name').value = template.name;
+            document.getElementById('template-description').value = template.description || '';
+            
+            // Load exercises
+            const exercisesResponse = await fetch('/api/v1/exercises/', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access')}`
+                }
+            });
+            
+            if (!exercisesResponse.ok) {
+                if (exercisesResponse.status === 401) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                throw new Error('Failed to load exercises');
+            }
+            
+            const exercises = await exercisesResponse.json();
+            const select = document.getElementById('template-exercises');
+            exercises.forEach(ex => {
+                const option = document.createElement('option');
+                option.value = ex.id;
+                option.textContent = `${ex.name} (${ex.muscle_groups.map(mg => mg.name).join(', ')})`;
+                if (template.exercises.some(e => e.exercise.id === ex.id)) option.selected = true;
+                select.appendChild(option);
+            });
+            
+            // Handle form submit
+            document.getElementById('edit-template-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('template-name').value;
+                const description = document.getElementById('template-description').value;
+                const exercises = Array.from(select.selectedOptions).map(o => o.value);
+                
+                const updateResponse = await fetch(`/api/v1/workout-templates/${templateId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access')}`
+                    },
+                    body: JSON.stringify({ name, description, exercises })
+                });
+                
+                if (updateResponse.ok) {
+                    window.location.href = 'index.html';
+                } else {
+                    alert('Failed to update template');
+                }
+            };
+        } catch (error) {
+            console.error('Error loading page:', error);
+            alert('Error loading page');
+        }
     });
+    
     window.cancelTemplateChanges = function() {
         window.location.href = 'index.html';
     };
